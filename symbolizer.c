@@ -121,12 +121,13 @@ void cgoSymbolizer(void* parg) {
 }
 
 void backtraceErrorCallback(void* data, const char* msg, int errnum) {
-  printf("Error %d occurred when getting the stacktrace: %s", errnum, msg);
+  fprintf(stderr, "Error %d occurred when getting the stacktrace: %s", errnum,
+          msg);
 }
 
-int backtraceCallback(void* data, uintptr_t pc, const char* filename, int lineno,
-                      const char* function) {
-  printf("%s\n\t%s:%d pc=0x%lx\n", function, filename, lineno, pc);
+int backtraceCallback(void* data, uintptr_t pc, const char* filename,
+                      int lineno, const char* function) {
+  fprintf(stderr, "%s\n\t%s:%d pc=0x%lx\n", function, filename, lineno, pc);
   return 0;
 }
 
@@ -137,13 +138,15 @@ void printBacktrace(int signo, siginfo_t* info, void* context) {
   }
   ucontext_t* uc = (ucontext_t*)(context);
 
-  printf("\nSIGNAL CATCH BY NON-GO SIGNAL HANDLER\n");
-  printf("SIGNO: %d; SIGNAME: %s; SI_CODE: %d; SI_ADDR: %p\nBACKTRACE:\n",
-         signo, strsignal(signo), info->si_code, info->si_addr);
+  fprintf(stderr, "\nSIGNAL CATCH BY NON-GO SIGNAL HANDLER\n");
+  fprintf(stderr,
+          "SIGNO: %d; SIGNAME: %s; SI_CODE: %d; SI_ADDR: %p\nBACKTRACE:\n",
+          signo, strsignal(signo), info->si_code, info->si_addr);
   // skip the wrapHandler, sigaction.
   backtrace_full(cgoBacktraceState, 3, backtraceCallback,
                  backtraceErrorCallback, NULL);
-  printf("\n\n");
+  fprintf(stderr, "\n\n");
+  fflush(stderr);
 }
 
 #define MAX_SIGNAL 32
