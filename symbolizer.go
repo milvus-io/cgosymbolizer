@@ -6,13 +6,16 @@
 // This will be used to provide a symbolic backtrace of cgo functions.
 // This package does not export any symbols.
 // To use it, add a line like
-//   import _ "github.com/ianlancetaylor/cgosymbolizer"
+//
+//	import _ "github.com/ianlancetaylor/cgosymbolizer"
+//
 // somewhere in your program.
 package cgosymbolizer
 
 // extern void cgoSymbolizerInit(char*);
 // extern void cgoTraceback(void*);
 // extern void cgoSymbolizer(void*);
+// extern void cgoInstallNonGoHandler();
 import "C"
 
 import (
@@ -23,5 +26,6 @@ import (
 
 func init() {
 	C.cgoSymbolizerInit(C.CString(os.Args[0]))
+	C.cgoInstallNonGoHandler()
 	runtime.SetCgoTraceback(0, unsafe.Pointer(C.cgoTraceback), nil, unsafe.Pointer(C.cgoSymbolizer))
 }
