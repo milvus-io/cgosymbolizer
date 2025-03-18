@@ -17,7 +17,7 @@
 
 static void createStateErrorCallback(void* data, const char* msg, int errnum) {}
 
-static struct backtrace_state* cgoBacktraceState;
+struct backtrace_state* cgoBacktraceState;
 
 // Initialize the backtrace state.
 void cgoSymbolizerInit(char* filename) {
