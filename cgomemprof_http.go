@@ -21,10 +21,16 @@ const (
 )
 
 func init() {
+	if IsJemallocStatsEnabled() {
+		log.Println("jemalloc memory stats http handlers registered at " + urlPathPrefix)
+		http.HandleFunc(urlPathPrefix+"stats", Stats)
+	}
+
 	if !IsJemallocProfEnabled() {
 		log.Println("jemalloc memory profiling option is not enabled, cgomemprof http handler will not be registered")
 		return
 	}
+
 	// manage api
 	http.HandleFunc(urlPathPrefix+"active", Active)
 
@@ -88,6 +94,25 @@ func Heap(w http.ResponseWriter, r *http.Request) {
 
 	if err := DumpMemoryProfileIntoFile(tmpFile.Name()); err != nil {
 		http.Error(w, fmt.Sprintf("could not dump memory profile, %s", err), http.StatusInternalServerError)
+		return
+	}
+	http.ServeFile(w, r, tmpFile.Name())
+}
+
+func Stats(w http.ResponseWriter, r *http.Request) {
+	opts := r.URL.Query().Get("opts")
+	tmpFile, err := os.CreateTemp("", "memstats-*.dump")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("could not create temp file to dump, %s", err), http.StatusInternalServerError)
+		return
+	}
+	defer func() {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+	}()
+
+	if err := DumpStatsIntoFile(tmpFile.Name(), opts); err != nil {
+		http.Error(w, fmt.Sprintf("could not dump memory stats, %s", err), http.StatusInternalServerError)
 		return
 	}
 	http.ServeFile(w, r, tmpFile.Name())
