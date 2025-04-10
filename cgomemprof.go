@@ -23,6 +23,12 @@ func IsJemallocProfEnabled() bool {
 	return int(enabled) == 1
 }
 
+// IsJemallocStatsEnabled returns true if jemalloc stats is enabled.
+func IsJemallocStatsEnabled() bool {
+	enabled := C.IsJemallocStatsEnabled()
+	return int(enabled) == 1
+}
+
 // EnableMemoryProfiling enables memory profiling at runtime.
 func EnableMemoryProfiling() error {
 	mu.Lock()
@@ -53,7 +59,18 @@ func DumpMemoryProfileIntoFile(filename string) error {
 	cfilename := C.CString(filename)
 	defer C.free(unsafe.Pointer(cfilename))
 	if code := C.DumpMemoryProfileIntoFile(cfilename); code != 0 {
-		return fmt.Errorf("DumpMemoryProfileIntoFile failed with code %d", code)
+		return fmt.Errorf("DumpMemoryProfileIntoFile failed with code %d", int(code))
+	}
+	return nil
+}
+
+func DumpStatsIntoFile(filename string, opts string) error {
+	cfilename := C.CString(filename)
+	defer C.free(unsafe.Pointer(cfilename))
+	copts := C.CString(opts)
+	defer C.free(unsafe.Pointer(copts))
+	if code := C.DumpStatsIntoFile(cfilename, copts); code != 0 {
+		return fmt.Errorf("DumpStatsIntoFile failed with code %d", int(code))
 	}
 	return nil
 }
@@ -64,4 +81,48 @@ func GetSymbol(addr uint64) string {
 	r := C.GoString(result)
 	C.free(unsafe.Pointer(result))
 	return r
+}
+
+func GetAllocatedMemory() uint64 {
+	return uint64(C.GetAllocatedMemory())
+}
+
+func GetActiveMemory() uint64 {
+	return uint64(C.GetActiveMemory())
+}
+
+func GetMetadataMemory() uint64 {
+	return uint64(C.GetMetadataMemory())
+}
+
+func GetMetadataThpMemory() uint64 {
+	return uint64(C.GetMetadataThpMemory())
+}
+
+func GetResidentMemory() uint64 {
+	return uint64(C.GetResidentMemory())
+}
+
+func GetMappedMemory() uint64 {
+	return uint64(C.GetMappedMemory())
+}
+
+func GetRetainedMemory() uint64 {
+	return uint64(C.GetRetainedMemory())
+}
+
+func GetZeroReallocs() uint64 {
+	return uint64(C.GetZeroReallocs())
+}
+
+func GetBackgroundThreadNumThreads() uint64 {
+	return uint64(C.GetBackgroundThreadNumThreads())
+}
+
+func GetBackgroundThreadNumRuns() uint64 {
+	return uint64(C.GetBackgroundThreadNumRuns())
+}
+
+func GetBackgroundThreadRunInterval() uint64 {
+	return uint64(C.GetBackgroundThreadRunInterval())
 }
