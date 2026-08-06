@@ -33,6 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #include "config.h"
 
 #include <stddef.h>
+#include <string.h>
 #include <sys/types.h>
 
 #include "backtrace.h"
@@ -53,6 +54,27 @@ static void
 swap (char *a, char *b, size_t size)
 {
   size_t i;
+
+  /* Swap a machine word at a time when the element size permits.  The
+     byte loop below cannot be widened by the compiler, as size is a
+     runtime value and the pointers are char *.  memcpy rather than a
+     cast, so that no aliasing assumption is introduced; the compiler
+     emits a plain load and store for each word.  */
+  if (size % sizeof (uintptr_t) == 0)
+    {
+      size_t nwords = size / sizeof (uintptr_t);
+
+      for (i = 0; i < nwords; i++)
+	{
+	  uintptr_t ta, tb;
+
+	  memcpy (&ta, a + i * sizeof ta, sizeof ta);
+	  memcpy (&tb, b + i * sizeof tb, sizeof tb);
+	  memcpy (a + i * sizeof tb, &tb, sizeof tb);
+	  memcpy (b + i * sizeof ta, &ta, sizeof ta);
+	}
+      return;
+    }
 
   for (i = 0; i < size; i++, a++, b++)
     {
