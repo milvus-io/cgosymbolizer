@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+#include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -157,6 +158,33 @@ static void (*oldSignalHandler[MAX_SIGNAL])(int signo, siginfo_t* info,
 static void wrapHandler(int signo, siginfo_t* info, void* context) {
   printBacktrace(signo, info, context);
   oldSignalHandler[signo](signo, info, context);
+
+  /* Reaching this point means the previous handler returned without killing
+     the process.  Go's runtime does that for a fault on a non-Go thread when
+     the process is PID 1 of a PID namespace: raisebadsignal() installs
+     SIG_DFL and raise()s, but raise() is tgkill(), and the kernel discards a
+     sent signal whose disposition is SIG_DFL for an init process unless it is
+     force-delivered (kernel/signal.c, SIGNAL_UNKILLABLE).  It then restores
+     the Go handler and returns, we return, the faulting instruction executes
+     again, and the thread loops on the fault forever -- process alive, task
+     never finishing.  See golang/go#59569.
+
+     A synchronous fault *is* force-delivered, even to an init process, so for
+     a kernel-raised signal (si_code > 0) restoring SIG_DFL and returning lets
+     the instruction re-execute and terminate the process the normal way, core
+     dump included.  A sent signal has no instruction to replay, so exit. */
+  signal(signo, SIG_DFL);
+  if (info != NULL && info->si_code > 0) {
+    return;
+  }
+  {
+    sigset_t only;
+    sigemptyset(&only);
+    sigaddset(&only, signo);
+    pthread_sigmask(SIG_UNBLOCK, &only, NULL);
+    raise(signo);
+    _exit(128 + signo);
+  }
 }
 
 void cgoInstallNonGoHandlerForSignum(int signum) {
