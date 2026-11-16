@@ -74,6 +74,13 @@ void cgoTraceback(void* parg) {
 		return;
 	}
 
+	// Don't unwind from a signal handler: the interrupted code may have no unwind
+	// information (for example BoringCrypto assembly), and the unwinder faults on it.
+	if (arg->sigContext != 0) {
+		arg->buf[0] = 0;
+		return;
+	}
+
 	// Skip this frame, the runtime/cgo function, and the sigreturn frame.
 	ud.idx = -3;
 	ud.addrs = arg->buf;
